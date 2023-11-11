@@ -1,3 +1,4 @@
+import { CSSProperties } from 'react';
 import { createUseStyles } from 'react-jss';
 
 const useStyles = createUseStyles({
@@ -18,13 +19,18 @@ const useStyles = createUseStyles({
 
 type ButtonProps = {
   onClick: (e: any) => void;
+  style?: CSSProperties;
   text: string;
 };
 
-export default function Button({ onClick, text }: ButtonProps): JSX.Element {
+export default function Button({
+  onClick,
+  style,
+  text,
+}: ButtonProps): JSX.Element {
   const styles = useStyles();
   return (
-    <button className={styles.button} onClick={onClick}>
+    <button className={styles.button} onClick={onClick} style={{ ...style }}>
       {text}
     </button>
   );

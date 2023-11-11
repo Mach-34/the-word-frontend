@@ -10,6 +10,10 @@ enum PCDRequestType {
     ProveAndAdd = "ProveAndAdd"
 }
 
+export interface PCDGetWithoutProvingRequest extends PCDRequest {
+    pcdType: string;
+}
+
 export interface PCDGetRequest<T extends PCDPackage = PCDPackage> extends PCDRequest {
     type: PCDRequestType.Get
     pcdType: T["name"]
@@ -119,7 +123,7 @@ const constructZupassPcdProveAndAddRequestUrl = <
     return `${zupassClientUrl}#/add?request=${eqReq}`;
 }
 
-const sendZupassRequest = (proofUrl: string) => {
+export const sendZupassRequest = (proofUrl: string) => {
     const popupUrl = `http://localhost:3001/#/popup?proofUrl=${encodeURIComponent(proofUrl)}`;
 
     window.open(popupUrl, "_blank", "width=450,height=600,top=100,popup");
@@ -173,3 +177,25 @@ const openZupassPopup = (popupUrl: string, proofUrl: string) => {
     window.open(url, "_blank", "width=450,height=600,top=100,popup")
 }
 
+export function getWithoutProvingUrl(
+    zupassClientUrl: string,
+    returnUrl: string,
+    pcdType: string
+) {
+    const req: PCDGetWithoutProvingRequest = {
+        type: PCDRequestType.GetWithoutProving,
+        pcdType,
+        returnUrl
+    };
+    const encReq = encodeURIComponent(JSON.stringify(req));
+    return `${zupassClientUrl}#/get-without-proving?request=${encReq}`;
+}
+
+export const getProofWithoutProving = () => {
+    const url = getWithoutProvingUrl(
+        ZUPASS_URL,
+        window.location.origin + '#/popup',
+        EmailPCDPackage.name
+    );
+    sendZupassRequest(url);
+};

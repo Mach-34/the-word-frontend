@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { SelectedWord, Word } from 'types';
 import { createUseStyles } from 'react-jss';
 import Button from 'components/Button';
+import StatusChip from './components/StatusChip';
 
 type WordCardStyles = {
   active: boolean;
@@ -43,7 +44,8 @@ const useStyles = createUseStyles({
     padding: '4px 8px',
   },
   wordCard: ({ active }: WordCardStyles) => ({
-    backgroundColor: active ? '#19473F' : 'gray',
+    // backgroundColor: active ? '#19473F' : 'gray',
+    backgroundColor: '#19473F',
     // TODO: Figure out how to return style from function
     borderRadius: '8px',
     boxSizing: 'border-box',
@@ -58,7 +60,6 @@ const useStyles = createUseStyles({
 });
 
 type WordCardProps = {
-  loggedInUser: string;
   setSelectedWord: Dispatch<SetStateAction<SelectedWord | null>>;
   setShowDetails: Dispatch<SetStateAction<number>>;
   showDetails: number;
@@ -66,7 +67,6 @@ type WordCardProps = {
 };
 
 export default function WordCard({
-  loggedInUser,
   setSelectedWord,
   setShowDetails,
   showDetails,
@@ -75,14 +75,14 @@ export default function WordCard({
   const styles = useStyles({ active: word.active });
 
   const border = useMemo(() => {
-    if (loggedInUser === word.shouter) {
+    if (word.userInteractions.shouted) {
       return '2px solid red';
-    } else if (word.active && word.whisperers.includes(loggedInUser)) {
+    } else if (word.userInteractions.whispered) {
       return '2px solid green';
     } else {
       return '2px solid #FBD270';
     }
-  }, [loggedInUser, word]);
+  }, [word]);
 
   return (
     <div
@@ -103,8 +103,8 @@ export default function WordCard({
             <div style={{ textAlign: 'center' }}>Hint: {word.hint}</div>
             {!!word.whisperers.length ? (
               <div className={styles.whispererList}>
-                {word.whisperers.map((username) => (
-                  <div>
+                {word.whisperers.map((username, index) => (
+                  <div key={index}>
                     <i>{username}</i>
                   </div>
                 ))}
@@ -116,7 +116,12 @@ export default function WordCard({
         </>
       ) : (
         <>
-          <div className={styles.id}>#{word.round}</div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {/* <StatusChip /> */}
+            <div className={styles.id}>
+              Round <i>#{word.round}</i>
+            </div>
+          </div>
           <div className={styles.whispers}>
             # of Whispers: {word.whisperers.length}
           </div>

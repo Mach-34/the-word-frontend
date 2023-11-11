@@ -1,85 +1,89 @@
-import { createUseStyles } from 'react-jss';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useStyles } from 'appStyles';
 import Select from './components/Select';
 import ActionModal from './components/Modal/ActionModal';
-import { ShoutWhisperPayload, getWords } from './api';
-import { SelectedWord, Word } from './types';
-import { Loader2 } from 'lucide-react';
+import {
+  ShoutWhisperPayload,
+  checkForSession,
+  getWords,
+  login,
+  logout,
+} from './api';
+import { SelectedWord, UserSession, Word } from './types';
+import { ArrowUpDown, Filter, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { shout, whisper } from './api';
 import WordCard from 'components/WordCard';
-import { addPCD } from 'utils/zupass';
+import { addPCD, getProofWithoutProving } from 'utils/zupass';
 import Button from 'components/Button';
-import { openEmailPCDPopup } from 'utils/zupass';
-
-const useStyles = createUseStyles({
-  '@keyframes spin': {
-    from: {
-      transform: 'rotate(0deg)',
-    },
-    to: {
-      transform: 'rotate(360deg)',
-    },
-  },
-  content: {
-    padding: '16px',
-    height: '100%',
-  },
-  divider: {
-    backgroundColor: '#FBD270',
-    height: '1.5px',
-    width: '100vw',
-  },
-  loadingSection: {
-    alignItems: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    height: '100%',
-    justifyContent: 'center',
-    marginTop: '100px',
-  },
-  loadingText: {
-    fontSize: '20px',
-    fontWeight: 700,
-  },
-  selectContainer: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '12px',
-  },
-  spin: {
-    animation: '$spin 1s linear infinite',
-  },
-  title: {
-    backgroundColor: '#19473F',
-    color: '#FBD270',
-    fontSize: '28px',
-    fontWeight: 700,
-    paddingBlock: '16px',
-    textAlign: 'center',
-  },
-  wordContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-});
 
 const FILTER_OPTIONS = ['Secrets I know', `Secrets I don't know`];
 const SORT_OPTIONS = ['Secret ID', '# of whispers', 'Prize shouting'];
 
 function App() {
   const styles = useStyles();
+  const [asc, setAsc] = useState(false);
   const [fetchingWords, setFetchingWords] = useState(true);
   const [filter, setFilter] = useState('');
-  const [loggedInUser, setLoggedInUser] = useState('');
+  const [loggedInUser, setLoggedInUser] = useState<UserSession | null>(null);
   const [performingAction, setPerformingAction] = useState(false);
+  const [restoringSession, setRestoringSession] = useState(true);
   const [selectedWord, setSelectedWord] = useState<SelectedWord | null>(null);
   const [showDetails, setShowDetails] = useState(-1);
   const [sort, setSort] = useState('');
   const [words, setWords] = useState<Array<Word>>([]);
-  const [userInput, setUserInput] = useState('');
+
+  const applyFilter = useCallback(
+    (word: Word) => {
+      if (filter === FILTER_OPTIONS[0]) {
+        return word.userInteractions.shouted || word.userInteractions.whispered;
+      } else {
+        return (
+          !word.userInteractions.shouted && !word.userInteractions.whispered
+        );
+      }
+    },
+    [filter]
+  );
+
+  const applySort = useCallback(
+    (word1: Word, word2: Word) => {
+      if (sort === SORT_OPTIONS[0]) {
+        return word2.round - word1.round;
+      } else if (sort === SORT_OPTIONS[1]) {
+        return word2.whisperers.length - word1.whisperers.length;
+      } else {
+        return word2.prize - word1.prize;
+      }
+    },
+    [sort]
+  );
+
+  const preparedWords = useMemo(() => {
+    let prepared = words.slice();
+    if (filter) prepared = prepared.filter((word) => applyFilter(word));
+    if (sort)
+      prepared.sort((word1, word2) =>
+        asc ? applySort(word2, word1) : applySort(word1, word2)
+      );
+    return prepared;
+  }, [applyFilter, applySort, asc, filter, sort, words]);
+
+  const loginWithZupass = async () => {
+    getProofWithoutProving();
+    const proof = await waitForProof();
+    const loginData = await login(proof);
+    setLoggedInUser(loginData);
+  };
+
+  const logoutWithZupass = async () => {
+    try {
+      await logout();
+      setLoggedInUser(null);
+    } catch (err) {
+      console.log('Error: ', err);
+    }
+  };
 
   const onActionComplete = async (payload: ShoutWhisperPayload) => {
     setPerformingAction(true);
@@ -101,6 +105,7 @@ function App() {
   };
 
   const updateLocalState = (isShout: boolean, payload: ShoutWhisperPayload) => {
+    if (!loggedInUser) return;
     setWords((prev) => {
       const index = prev.findIndex((word) => word.round === payload.round);
       const wordToUpdate = {
@@ -110,6 +115,7 @@ function App() {
       if (isShout) {
         wordToUpdate.active = false;
         wordToUpdate.shouter = payload.username;
+        wordToUpdate.userInteractions.shouted = true;
       } else {
         wordToUpdate.whisperers = [
           ...wordToUpdate.whisperers,
@@ -120,49 +126,111 @@ function App() {
     });
   };
 
+  const waitForProof = (): Promise<string> => {
+    return new Promise((resolve) => {
+      const onReceipt = (event: MessageEvent) => {
+        const { proof, zupass_redirect } = event.data;
+        if (zupass_redirect) {
+          resolve(proof);
+          window.removeEventListener('message', onReceipt);
+        }
+      };
+      window.addEventListener('message', onReceipt);
+    });
+  };
+
   useEffect(() => {
     (async () => {
-      const wordData = await getWords();
-      setWords(wordData);
-      setFetchingWords(false);
+      // Detect whether oauth redirect window or not
+      if (window.opener) {
+        const params = new URLSearchParams(window.location.hash.slice(7));
+        const proof = params.get('proof');
+        window.opener.postMessage({ proof, zupass_redirect: true });
+        window.close();
+      } else {
+        const wordData = await getWords();
+        const data = await checkForSession();
+        if (!data.msg) {
+          setLoggedInUser(data);
+        }
+        setWords(wordData);
+        setFetchingWords(false);
+        setRestoringSession(false);
+      }
     })();
   }, []);
 
   return (
     <div>
-      {/* <div
-        style={{
-          alignItems: 'center',
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '24px',
-        }}
-      >
-        <input
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder='Search by user'
-          value={userInput}
-        />
-        <button onClick={() => setLoggedInUser(userInput.slice())}>
-          Log In
-        </button>
-      </div> */}
-      <div className={styles.title}>The Word</div>
+      <div className={styles.titleSection}>
+        <div style={{ textAlign: 'center' }}>The Word</div>
+        {restoringSession ? (
+          <div style={{ color: '#FBD270', fontSize: '12px' }}>
+            Restoring session...
+          </div>
+        ) : (
+          <div className={styles.loggedInContainer}>
+            {loggedInUser && (
+              <div className={styles.emailContainer}>
+                <i>{loggedInUser.email}</i>
+              </div>
+            )}
+            <Button
+              onClick={() =>
+                loggedInUser ? logoutWithZupass() : loginWithZupass()
+              }
+              text={loggedInUser ? 'Log out' : 'Log in'}
+            />
+          </div>
+        )}
+      </div>
       <div className={styles.divider} />
       <div className={styles.content}>
         <div className={styles.selectContainer}>
-          <Select
-            options={FILTER_OPTIONS}
-            placeholder='Choose sort'
-            select={setFilter}
-            selectedOption={filter}
-          />
-          <Select
-            options={SORT_OPTIONS}
-            placeholder='Choose filter'
-            select={setSort}
-            selectedOption={sort}
-          />
+          <div className={styles.flex}>
+            {sort && (
+              <>
+                {' '}
+                <label htmlFor='ascending' style={{ fontSize: '12px' }}>
+                  Asc{' '}
+                </label>
+                <input
+                  checked={asc}
+                  id='ascending'
+                  onChange={() => setAsc(!asc)}
+                  type='checkbox'
+                />
+              </>
+            )}
+            <Select
+              Icon={ArrowUpDown}
+              options={SORT_OPTIONS}
+              placeholder='Choose sort'
+              select={setSort}
+              selectedOption={sort}
+            />
+            {sort && (
+              <div className={styles.flex}>
+                <div className={styles.clear} onClick={() => setSort('')}>
+                  Clear sort
+                </div>
+              </div>
+            )}
+          </div>
+          <div className={styles.flex}>
+            <Select
+              Icon={Filter}
+              options={FILTER_OPTIONS}
+              placeholder='Choose filter'
+              select={setFilter}
+              selectedOption={filter}
+            />
+            {filter && (
+              <div className={styles.clear} onClick={() => setFilter('')}>
+                Clear filter
+              </div>
+            )}
+          </div>
         </div>
         <div>
           {fetchingWords ? (
@@ -174,20 +242,22 @@ function App() {
             </div>
           ) : (
             <div className={styles.wordContainer}>
-              {words.map((word: Word) => (
-                <WordCard
-                  key={word.round}
-                  loggedInUser={loggedInUser}
-                  setSelectedWord={setSelectedWord}
-                  setShowDetails={setShowDetails}
-                  showDetails={showDetails}
-                  word={word}
-                />
-              ))}
+              {!!preparedWords.length ? (
+                preparedWords.map((word: Word) => (
+                  <WordCard
+                    key={word.round}
+                    setSelectedWord={setSelectedWord}
+                    setShowDetails={setShowDetails}
+                    showDetails={showDetails}
+                    word={word}
+                  />
+                ))
+              ) : (
+                <div className={styles.noWords}>No words</div>
+              )}
             </div>
           )}
         </div>
-        <Button onClick={() => openEmailPCDPopup()} text='Open Email' />
         <ActionModal
           isShout={selectedWord?.action === 'shout'}
           onClose={() => setSelectedWord(null)}
