@@ -240,7 +240,7 @@ function App() {
             <Flex
               childFlex='1 0 calc(33.3% - 8px)'
               gap='8px'
-              mt='32px'
+              mt='24px'
               paddingItemsCount={3}
               paddingItemsStyle={{ minWidth: '250px' }}
               wrap='wrap'
