@@ -16,16 +16,29 @@ const useStyles = createUseStyles({
     padding: '6px 12px',
     position: 'relative',
   },
+  divider: {
+    backgroundColor: '#FBD270',
+    height: '1px',
+    width: '100%',
+  },
   menu: {
     backgroundColor: '#19473F',
     border: '1px solid #FBD270',
     borderRadius: '4px',
     marginLeft: '-12px',
-    padding: '6px',
+    // padding: '4px 8px',
     position: 'absolute',
     top: 'calc(100% + 8px)',
-    width: 'calc(100% - 12px)',
+    width: '100%',
     zIndex: 100,
+  },
+  option: {
+    padding: '4px 8px',
+    transition: '.3s all',
+    '&:hover': {
+      backgroundColor: '#FBD270',
+      color: '#19473F',
+    },
   },
 });
 
@@ -60,10 +73,19 @@ export default function Select({
       {Icon ? <Icon size={16} /> : <ChevronDown size={16} />}
       {open && (
         <div className={styles.menu}>
-          {options.map((option) => (
-            <div onClick={() => select(option)} style={{ marginTop: '8px' }}>
-              {option}
-            </div>
+          {options.map((option, index) => (
+            <>
+              <div
+                className={styles.option}
+                key={option}
+                onClick={() => select(option)}
+              >
+                {option}
+              </div>
+              {index !== options.length - 1 && (
+                <div className={styles.divider} />
+              )}
+            </>
           ))}
         </div>
       )}

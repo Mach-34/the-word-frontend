@@ -5,10 +5,6 @@ import { createUseStyles } from 'react-jss';
 import Button from 'components/Button';
 import StatusChip from './components/StatusChip';
 
-type WordCardStyles = {
-  active: boolean;
-};
-
 const useStyles = createUseStyles({
   actions: {
     display: 'flex',
@@ -43,20 +39,17 @@ const useStyles = createUseStyles({
     overflowY: 'auto',
     padding: '4px 8px',
   },
-  wordCard: ({ active }: WordCardStyles) => ({
-    // backgroundColor: active ? '#19473F' : 'gray',
+  wordCard: {
     backgroundColor: '#19473F',
-    // TODO: Figure out how to return style from function
+    border: '1px solid #FBD270',
     borderRadius: '8px',
     boxSizing: 'border-box',
     color: 'white',
     cursor: 'pointer',
-    flex: '1 1 calc(33.33% - 8px)',
     marginBottom: '12px',
-    // maxWidth: 'calc(33.33% - 8px)',
     minWidth: '250px',
     padding: '16px',
-  }),
+  },
 });
 
 type WordCardProps = {
@@ -72,24 +65,25 @@ export default function WordCard({
   showDetails,
   word,
 }: WordCardProps): JSX.Element {
-  const styles = useStyles({ active: word.active });
+  const styles = useStyles();
 
-  const border = useMemo(() => {
-    if (word.userInteractions.shouted) {
-      return '2px solid red';
-    } else if (word.userInteractions.whispered) {
-      return '2px solid green';
-    } else {
-      return '2px solid #FBD270';
-    }
+  // const border = useMemo(() => {
+  //   // if (word.userInteractions.shouted) {
+  //   //   return '2px solid red';
+  //   // } else if (word.userInteractions.whispered) {
+  //   //   return '2px solid green';
+  //   // } else {
+  //   //   return '2px solid #FBD270';
+  //   // }
+  //   return '2px solid #FBD270';
+  // }, [word]);
+
+  const renderChip = useMemo(() => {
+    return word.userInteractions.shouted || word.userInteractions.whispered;
   }, [word]);
 
   return (
-    <div
-      className={styles.wordCard}
-      onClick={() => setShowDetails(word.round)}
-      style={{ border }}
-    >
+    <div className={styles.wordCard} onClick={() => setShowDetails(word.round)}>
       {showDetails === word.round ? (
         <>
           <ArrowLeft
@@ -116,8 +110,16 @@ export default function WordCard({
         </>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            {/* <StatusChip /> */}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            {renderChip ? (
+              <StatusChip
+                selfShout={word.userInteractions.shouted}
+                selfWhisper={word.userInteractions.whispered}
+                shouted={!!word.shouter}
+              />
+            ) : (
+              <div style={{ width: '10px' }} />
+            )}
             <div className={styles.id}>
               Round <i>#{word.round}</i>
             </div>

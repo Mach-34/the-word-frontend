@@ -10,12 +10,14 @@ import {
   logout,
 } from './api';
 import { SelectedWord, UserSession, Word } from './types';
-import { ArrowUpDown, Filter, Loader2 } from 'lucide-react';
+import { ArrowUpDown, Filter } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { shout, whisper } from './api';
 import WordCard from 'components/WordCard';
 import { addPCD, getProofWithoutProving } from 'utils/zupass';
 import Button from 'components/Button';
+import { MoonLoader } from 'react-spinners';
+import Flex from 'components/Flex';
 
 const FILTER_OPTIONS = ['Secrets I know', `Secrets I don't know`];
 const SORT_OPTIONS = ['Secret ID', '# of whispers', 'Prize shouting'];
@@ -188,20 +190,6 @@ function App() {
       <div className={styles.content}>
         <div className={styles.selectContainer}>
           <div className={styles.flex}>
-            {sort && (
-              <>
-                {' '}
-                <label htmlFor='ascending' style={{ fontSize: '12px' }}>
-                  Asc{' '}
-                </label>
-                <input
-                  checked={asc}
-                  id='ascending'
-                  onChange={() => setAsc(!asc)}
-                  type='checkbox'
-                />
-              </>
-            )}
             <Select
               Icon={ArrowUpDown}
               options={SORT_OPTIONS}
@@ -214,6 +202,16 @@ function App() {
                 <div className={styles.clear} onClick={() => setSort('')}>
                   Clear sort
                 </div>
+                <label htmlFor='ascending' style={{ fontSize: '12px' }}>
+                  Asc{' '}
+                </label>
+                <input
+                  checked={asc}
+                  id='ascending'
+                  onChange={() => setAsc(!asc)}
+                  style={{ marginLeft: '-2px' }}
+                  type='checkbox'
+                />
               </div>
             )}
           </div>
@@ -235,13 +233,18 @@ function App() {
         <div>
           {fetchingWords ? (
             <div className={styles.loadingSection}>
-              <div className={styles.spin}>
-                <Loader2 size={30} />
-              </div>
+              <MoonLoader color='#FBD270' size={40} />
               <div className={styles.loadingText}>Fetching words</div>
             </div>
           ) : (
-            <div className={styles.wordContainer}>
+            <Flex
+              childFlex='1 0 calc(33.3% - 8px)'
+              gap='8px'
+              mt='32px'
+              paddingItemsCount={3}
+              paddingItemsStyle={{ minWidth: '250px' }}
+              wrap='wrap'
+            >
               {!!preparedWords.length ? (
                 preparedWords.map((word: Word) => (
                   <WordCard
@@ -255,7 +258,7 @@ function App() {
               ) : (
                 <div className={styles.noWords}>No words</div>
               )}
-            </div>
+            </Flex>
           )}
         </div>
         <ActionModal

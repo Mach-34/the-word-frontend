@@ -1,14 +1,6 @@
 import { createUseStyles } from "react-jss";
 
 export const useStyles = createUseStyles({
-  '@keyframes spin': {
-    from: {
-      transform: 'rotate(0deg)',
-    },
-    to: {
-      transform: 'rotate(360deg)',
-    },
-  },
   clear: {
     cursor: 'pointer',
     fontSize: '12px'
@@ -43,6 +35,7 @@ export const useStyles = createUseStyles({
     marginTop: '100px',
   },
   loadingText: {
+    color: '#FBD270',
     fontSize: '20px',
     fontWeight: 700,
   },
@@ -51,6 +44,10 @@ export const useStyles = createUseStyles({
     display: 'flex',
     fontSize: '12px',
     gap: '8px',
+    marginTop: '8px',
+    '@media (max-width: 450px)': {
+      justifyContent: 'center'
+    }
   },
   noWords: {
     alignItems: 'center',
@@ -63,11 +60,10 @@ export const useStyles = createUseStyles({
   },
   selectContainer: {
     display: 'flex',
+    flexWrap: 'wrap',
+    gap: '16px',
     justifyContent: 'space-between',
     marginBottom: '12px',
-  },
-  spin: {
-    animation: '$spin 1s linear infinite',
   },
   titleSection: {
     backgroundColor: '#19473F',
@@ -80,5 +76,6 @@ export const useStyles = createUseStyles({
     display: 'flex',
     flexWrap: 'wrap',
     gap: '8px',
+    marginTop: '16px'
   },
 });

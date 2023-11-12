@@ -155,7 +155,7 @@ export function openEmailPCDPopup(
         },
     }
 
-    const popupUrl = 'http://localhost:3001' + "/#/" + popupRoute
+    const popupUrl = `http://localhost:3001/#/${popupRoute}`
 
     const proofUrl = constructZupassPcdGetRequestUrl<typeof EmailPCDPackage>(
         ZUPASS_URL,
