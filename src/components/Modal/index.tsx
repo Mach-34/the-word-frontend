@@ -12,7 +12,6 @@ const customStyles = {
     marginRight: '-50%',
     transform: 'translate(-50%, -50%)',
     zIndex: 100001,
-    padding: 0,
   },
   overlay: {
     background: 'transparent',
@@ -37,7 +36,7 @@ export default function Modal({ open, onClose, children, style }: IModal) {
       borderRadius: '21px',
       height: '70vh',
       maxWidth: '466px',
-      width: '100%',
+      width: 'calc(100% - 80px)',
       ...customStyles.content,
       ...style,
     },

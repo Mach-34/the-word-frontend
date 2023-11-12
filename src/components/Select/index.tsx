@@ -74,18 +74,14 @@ export default function Select({
       {open && (
         <div className={styles.menu}>
           {options.map((option, index) => (
-            <>
-              <div
-                className={styles.option}
-                key={option}
-                onClick={() => select(option)}
-              >
+            <div key={option}>
+              <div className={styles.option} onClick={() => select(option)}>
                 {option}
               </div>
               {index !== options.length - 1 && (
                 <div className={styles.divider} />
               )}
-            </>
+            </div>
           ))}
         </div>
       )}

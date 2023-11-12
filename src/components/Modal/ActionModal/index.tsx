@@ -68,7 +68,6 @@ export default function ActionModal({
       style={{
         backgroundColor: '#19473F',
         border: '2px solid #CABF8D',
-        padding: '24px',
       }}
     >
       <X className={styles.exit} color='#FBD270' onClick={onClose} />
@@ -77,14 +76,14 @@ export default function ActionModal({
           className={styles.input}
           onChange={(e) => setSecret(e.target.value)}
           placeholder='Secret'
-          style={{ width: '75%' }}
+          style={{ width: '85%' }}
           value={secret}
         />
         <input
           className={styles.input}
           onChange={(e) => setUsername(e.target.value)}
           placeholder='Username'
-          style={{ width: '75%' }}
+          style={{ width: '85%' }}
           value={username}
         />
         <Button
