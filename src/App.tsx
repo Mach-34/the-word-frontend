@@ -282,6 +282,7 @@ function App() {
                 preparedWords.map((word: Word) => (
                   <WordCard
                     key={word.round}
+                    isLoggedIn={!!loggedInUser}
                     setSelectedWord={setSelectedWord}
                     setShowDetails={setShowDetails}
                     showDetails={showDetails}

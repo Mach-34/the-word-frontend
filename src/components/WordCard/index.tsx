@@ -54,6 +54,7 @@ const useStyles = createUseStyles({
 });
 
 type WordCardProps = {
+  isLoggedIn: boolean;
   setSelectedWord: Dispatch<SetStateAction<SelectedWord | null>>;
   setShowDetails: Dispatch<SetStateAction<number>>;
   showDetails: number;
@@ -61,6 +62,7 @@ type WordCardProps = {
 };
 
 export default function WordCard({
+  isLoggedIn,
   setSelectedWord,
   setShowDetails,
   showDetails,
@@ -138,6 +140,7 @@ export default function WordCard({
       {word.active ? (
         <div className={styles.actions}>
           <Button
+            disabled={!isLoggedIn}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedWord({
@@ -148,6 +151,7 @@ export default function WordCard({
             text={hasWhispered ? 'Reissue PCD' : 'Whisper'}
           />
           <Button
+            disabled={!isLoggedIn}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedWord({ action: Action.Shout, round: word.round });
