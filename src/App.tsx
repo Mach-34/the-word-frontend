@@ -3,13 +3,14 @@ import { useStyles } from 'appStyles';
 import Select from './components/Select';
 import ActionModal from './components/Modal/ActionModal';
 import {
-  ShoutWhisperPayload,
+  ActionPayload,
   checkForSession,
   getWords,
   login,
   logout,
+  verify,
 } from './api';
-import { SelectedWord, UserSession, Word } from './types';
+import { Action, SelectedWord, UserSession, Word } from './types';
 import { ArrowUpDown, Filter } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { shout, whisper } from './api';
@@ -34,6 +35,22 @@ function App() {
   const [showDetails, setShowDetails] = useState(-1);
   const [sort, setSort] = useState('');
   const [words, setWords] = useState<Array<Word>>([]);
+
+  const actionText = (action: Action) => {
+    let errorText = '';
+    let successText = '';
+    if (action === Action.Shout) {
+      errorText = 'Shout failed!!!';
+      successText = 'Successfully shouted!';
+    } else if (action === Action.Whisper) {
+      errorText = 'Whisper failed!!!';
+      successText = 'Successfully whispered!';
+    } else {
+      errorText = 'Verification failed!!!';
+      successText = 'Successfully verified!';
+    }
+    return { errorText, successText };
+  };
 
   const applyFilter = useCallback(
     (word: Word) => {
@@ -75,6 +92,9 @@ function App() {
     getProofWithoutProving();
     const proof = await waitForProof();
     const loginData = await login(proof);
+    // Fetch words again to reflect beginning of user session
+    const wordData = await getWords();
+    setWords(wordData);
     setLoggedInUser(loginData);
   };
 
@@ -82,22 +102,32 @@ function App() {
     try {
       await logout();
       setLoggedInUser(null);
+      // Update words to reflect end of user session
+      setWords((prev) =>
+        prev.map((word) => ({
+          ...word,
+          userInteractions: { shouted: false, whispered: false },
+        }))
+      );
     } catch (err) {
       console.log('Error: ', err);
     }
   };
 
-  const onActionComplete = async (payload: ShoutWhisperPayload) => {
+  const onActionComplete = async (payload: ActionPayload) => {
+    if (!selectedWord) return;
     setPerformingAction(true);
-    const isShout = selectedWord?.action === 'shout';
-    const successText = `Successfully ${isShout ? 'shouted' : 'whispered'}!`;
-    const errorText = `${isShout ? 'Shout' : 'Whisper'} failed!!!`;
+    const { errorText, successText } = actionText(selectedWord.action);
     try {
-      isShout ? await shout(payload) : await whisper(payload);
+      if (selectedWord.action === Action.Shout) await shout(payload);
+      else if (selectedWord.action === Action.Whisper) await whisper(payload);
+      else await verify(payload);
       toast.success(successText);
       setSelectedWord(null);
-      updateLocalState(isShout, payload);
-      if (!isShout) {
+      if (selectedWord.action !== Action.Reissue) {
+        updateLocalState(selectedWord.action === Action.Shout, payload);
+      }
+      if (selectedWord.action !== Action.Shout) {
         addPCD(payload);
       }
     } catch (err) {
@@ -106,7 +136,7 @@ function App() {
     setPerformingAction(false);
   };
 
-  const updateLocalState = (isShout: boolean, payload: ShoutWhisperPayload) => {
+  const updateLocalState = (isShout: boolean, payload: ActionPayload) => {
     if (!loggedInUser) return;
     setWords((prev) => {
       const index = prev.findIndex((word) => word.round === payload.round);
@@ -119,6 +149,7 @@ function App() {
         wordToUpdate.shouter = payload.username;
         wordToUpdate.userInteractions.shouted = true;
       } else {
+        wordToUpdate.userInteractions.whispered = true;
         wordToUpdate.whisperers = [
           ...wordToUpdate.whisperers,
           payload.username,
@@ -161,6 +192,8 @@ function App() {
       }
     })();
   }, []);
+
+  console.log('Logged in user: ', loggedInUser);
 
   return (
     <div>
@@ -262,12 +295,13 @@ function App() {
           )}
         </div>
         <ActionModal
-          isShout={selectedWord?.action === 'shout'}
+          action={selectedWord?.action}
           onClose={() => setSelectedWord(null)}
           onFinish={onActionComplete}
           open={!!selectedWord}
           performingAction={performingAction}
           round={selectedWord?.round ?? -1}
+          savedUsername={loggedInUser?.username}
         />
       </div>
     </div>

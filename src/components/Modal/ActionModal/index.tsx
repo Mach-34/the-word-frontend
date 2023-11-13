@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import Modal, { IModal } from '..';
 import { createUseStyles } from 'react-jss';
 import { X } from 'lucide-react';
-import { ShoutWhisperPayload } from '../../../api';
+import { ActionPayload } from '../../../api';
 import Button from 'components/Button';
+import { Action } from 'types';
 
 type ActionModalProps = {
-  isShout: boolean;
-  onFinish: (payload: ShoutWhisperPayload) => void;
+  action: Action | undefined;
+  onFinish: (payload: ActionPayload) => void;
   performingAction: boolean;
   round: number;
+  savedUsername?: string;
 } & Omit<IModal, 'children'>;
 
 const useStyles = createUseStyles({
@@ -37,24 +39,27 @@ const useStyles = createUseStyles({
 });
 
 export default function ActionModal({
-  isShout,
+  action,
   onClose,
   onFinish,
   open,
   performingAction,
   round,
+  savedUsername,
 }: ActionModalProps): JSX.Element {
   const [secret, setSecret] = useState('');
   const [username, setUsername] = useState('');
   const styles = useStyles();
 
   const actionText = useMemo(() => {
-    if (isShout) {
+    if (action === Action.Shout) {
       return performingAction ? 'Shouting...' : 'Shout';
-    } else {
+    } else if (action === Action.Whisper) {
       return performingAction ? 'Whispering...' : 'Whisper';
+    } else {
+      return performingAction ? 'Verifying...' : 'Verify';
     }
-  }, [isShout, performingAction]);
+  }, [action, performingAction]);
 
   useEffect(() => {
     setSecret('');
@@ -81,13 +86,16 @@ export default function ActionModal({
         />
         <input
           className={styles.input}
+          disabled={!!savedUsername}
           onChange={(e) => setUsername(e.target.value)}
           placeholder='Username'
           style={{ width: '85%' }}
-          value={username}
+          value={savedUsername ?? username}
         />
         <Button
-          onClick={() => onFinish({ round, secret, username })}
+          onClick={() =>
+            onFinish({ round, secret, username: savedUsername ?? username })
+          }
           text={actionText}
         />
       </div>

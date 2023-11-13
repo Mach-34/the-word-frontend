@@ -1,7 +1,7 @@
 
 const { REACT_APP_API_URL } = process.env;
 
-export type ShoutWhisperPayload = {
+export type ActionPayload = {
     round: number;
     secret: string;
     username: string;
@@ -40,7 +40,7 @@ export const logout = async () => {
     }
 }
 
-export const shout = async (payload: ShoutWhisperPayload) => {
+export const shout = async (payload: ActionPayload) => {
     const res = await fetch(`${REACT_APP_API_URL}/shout`, {
         body: JSON.stringify(payload),
         method: 'POST',
@@ -54,7 +54,7 @@ export const shout = async (payload: ShoutWhisperPayload) => {
     }
 }
 
-export const whisper = async (payload: ShoutWhisperPayload) => {
+export const whisper = async (payload: ActionPayload) => {
     const res = await fetch(`${REACT_APP_API_URL}/whisper`, {
         body: JSON.stringify(payload),
         method: 'POST',
@@ -65,5 +65,19 @@ export const whisper = async (payload: ShoutWhisperPayload) => {
     });
     if (!res.ok) {
         throw Error("Whisper failed")
+    }
+}
+
+export const verify = async (payload: ActionPayload) => {
+    const res = await fetch(`${REACT_APP_API_URL}/verify`, {
+        body: JSON.stringify(payload),
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json'
+        },
+        credentials: 'include'
+    });
+    if (!res.ok) {
+        throw Error("Shout failed")
     }
 }

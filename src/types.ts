@@ -1,11 +1,18 @@
+export enum Action {
+    Reissue = 'reissue',
+    Shout = 'shout',
+    Whisper = 'whisper',
+}
+
 export type SelectedWord = {
-    action: 'shout' | 'whisper';
+    action: Action;
     round: number;
 };
 
 export type UserSession = {
     email: string;
     semaphoreId: string;
+    username?: string;
 }
 
 export type Word = {

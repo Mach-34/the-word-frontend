@@ -4,6 +4,7 @@ import { SelectedWord, Word } from 'types';
 import { createUseStyles } from 'react-jss';
 import Button from 'components/Button';
 import StatusChip from './components/StatusChip';
+import { Action } from 'types';
 
 const useStyles = createUseStyles({
   actions: {
@@ -78,6 +79,8 @@ export default function WordCard({
   //   return '2px solid #FBD270';
   // }, [word]);
 
+  const hasWhispered = word.userInteractions.whispered;
+
   const renderChip = useMemo(() => {
     return word.userInteractions.shouted || word.userInteractions.whispered;
   }, [word]);
@@ -138,16 +141,16 @@ export default function WordCard({
             onClick={(e) => {
               e.stopPropagation();
               setSelectedWord({
-                action: 'whisper',
+                action: hasWhispered ? Action.Reissue : Action.Whisper,
                 round: word.round,
               });
             }}
-            text='Whisper'
+            text={hasWhispered ? 'Reissue PCD' : 'Whisper'}
           />
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedWord({ action: 'shout', round: word.round });
+              setSelectedWord({ action: Action.Shout, round: word.round });
             }}
             text='Shout'
           />

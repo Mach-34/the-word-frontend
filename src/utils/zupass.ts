@@ -1,6 +1,6 @@
 import { EmailPCDArgs, EmailPCDPackage } from '@pcd/email-pcd';
 import { ArgsOf, ArgumentTypeName, PCDPackage } from '@pcd/pcd-types';
-import { ShoutWhisperPayload } from 'api';
+import { ActionPayload } from 'api';
 import { ZUPASS_URL } from 'utils/constants';
 
 enum PCDRequestType {
@@ -45,7 +45,7 @@ interface PCDProveAndAddRequest<T extends PCDPackage = PCDPackage>
 }
 
 
-export const addPCD = ({ round, secret, username }: ShoutWhisperPayload) => {
+export const addPCD = ({ round, secret, username }: ActionPayload) => {
     // TODO: Provide replace any
     const proofUrl = constructZupassPcdProveAndAddRequestUrl<any>(
         ZUPASS_URL,
@@ -194,7 +194,7 @@ export function getWithoutProvingUrl(
 export const getProofWithoutProving = () => {
     const url = getWithoutProvingUrl(
         ZUPASS_URL,
-        window.location.origin + '#/popup',
+        `${window.location.origin}#/popup`,
         EmailPCDPackage.name
     );
     sendZupassRequest(url);
