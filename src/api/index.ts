@@ -80,7 +80,12 @@ export const verify = async (payload: ActionPayload) => {
         credentials: 'include'
     });
     if (!res.ok) {
-        throw Error("Verification failed")
+        const text = await res.text();
+        if (text.includes('not active')) {
+            return { msg: 'Not active' }
+        } else {
+            throw Error("Verification failed")
+        }
     }
     return await res.json()
 }

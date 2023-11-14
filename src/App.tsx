@@ -237,18 +237,19 @@ function App() {
       username,
       verifying: true,
     });
-    try {
-      const { shouted } = await verify({
-        proof: pcd.proof,
-        round,
-        username,
-      });
+    const { msg } = await verify({
+      proof: pcd.proof,
+      round,
+      username,
+    });
+    if (!msg) {
       setShowVerifyModal(
-        (prev) => ({ ...prev!, shouted, verified: true, verifying: false }!)
+        (prev) => ({ ...prev!, verified: true, verifying: false }!)
       );
-    } catch (err) {
+    } else {
       setShowVerifyModal(
-        (prev) => ({ ...prev!, verified: false, verifying: false }!)
+        (prev) =>
+          ({ ...prev!, shouted: true, verified: false, verifying: false }!)
       );
     }
   };
@@ -260,9 +261,15 @@ function App() {
       } else if (
         window.location.href.includes(`${window.location.origin}/#/`)
       ) {
-        const url = window.location.href;
-        const pcd = parseQRUrl(url);
-        await verifyPCDFromQR(pcd);
+        try {
+          const url = window.location.href;
+          const pcd = parseQRUrl(url);
+          await verifyPCDFromQR(pcd);
+        } catch (err) {
+          setShowVerifyModal(
+            (prev) => ({ ...prev!, verified: false, verifying: false }!)
+          );
+        }
       } else {
         const wordData = await getWords();
         const data = await checkForSession();

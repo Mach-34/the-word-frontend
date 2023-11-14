@@ -34,22 +34,22 @@ export default function VerifyModal({ data, onClose, open }: VerifyModalProps) {
     } else if (data.verified && data.shouted) {
       return <CheckCircle color='#ED1010' size={70} />;
     } else if (data.verified) {
-      <CheckCircle color='#22E01F' size={70} />;
+      return <CheckCircle color='#22E01F' size={70} />;
     } else {
-      <XCircle color='#ED1010' size={70} />;
+      return <XCircle color='#ED1010' size={70} />;
     }
   }, [data]);
 
   const text = useMemo(() => {
     if (!data) return '';
     if (data.verifying) {
-      return `Verify proof for round ${data.round}`;
-    } else if (!data.verifying && data.verified && data.shouted) {
-      return `Proof successfully verified for user: ${data.username}. Word has been shouted`;
+      return `Verifying proof for round ${data.round}`;
+    } else if (!data.verifying && data.shouted) {
+      return `Round ${data.round} is no longer active`;
     } else if (!data.verifying && data.verified) {
       return `Proof successfully verified for user: ${data.username}`;
     } else {
-      return `Could not verify proof for user: ${data.username}`;
+      return `Could not verify proof for user`;
     }
   }, [data]);
 
@@ -62,7 +62,6 @@ export default function VerifyModal({ data, onClose, open }: VerifyModalProps) {
         justifyContent='center'
         style={{ height: '100%' }}
       >
-        {data?.shouted && <div className={styles.shouted}>Shouted!!!</div>}
         <div style={{ height: '70px' }}>{icon}</div>
         <div className={styles.text}>{text}</div>
       </Flex>
