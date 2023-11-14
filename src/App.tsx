@@ -26,6 +26,7 @@ import {
   getProofWithoutProving,
   convertTitleToFelts,
   usernameToBigint,
+  handlePopup,
 } from 'utils/zupass';
 import Button from 'components/Button';
 import { MoonLoader } from 'react-spinners';
@@ -211,13 +212,10 @@ function App() {
     });
   };
 
-  const getPCD = () => {
-    const qrUrl =
-      'http://localhost:3004/#/verify-phrase?pcd=H4sIAAAAAAAAA2WTXU7bUBCF9%2BJnIs3%2FDwuo2jU0qDLGLahAogQqVYi991yHPlR9Sa49npnvnJn7Nr38Pq7T9XRel9P6sjven%2Bbzujsud9PVNH6vp7f99HC3n673E9t39lV9N9OaO1t42d3e1ryriuWO26xL99PVfloe54cnpCD1UvDLKCCIvJ7X0%2FP8tG71Ps0%2F18sDIheAz%2FP5foulOIVLsmSzlaaHsuBPpbmsRCUrspRMIkidhcIou9lJu7PKGEmtHPvpHQ2Op8Ph%2BwfUw7cZp69ogzAzZ4eVI6fCMqWou51LzdQ1qCM60ywriVvSmDxZs2ngZEkH3m0yAAwjEBKi0CyXVncCIKELIcO8clRP7mBrEyNTiw5PKypUluICBW0FUfbmakO%2BHchgFk%2BiVPUht4pxSljSzOUQAztKDMrFueFSwAV0AAUyuJgjCQWCivujhTObmUhADdxF87ZARoRAIeypajjURtDjwxUSaCZoEx%2BwpYEOCh2DFowsldGEAaGG4FACjirtkrEpmOUAp04MkkgIAqBAh7BgIosAB7toUWyQUIb6g3HAYyuEgQgzI1IwvG5jHV7DZqwASamYDfBGL9jAYHAQYlx%2FIbfC8ODmw%2BHlshTl0AlVipmwtxowcQwxwVguc098owmNcBUKnNo7h8qg8a6LMGlx2VoUFgpa8Y0Hkg2L3Uh3LCw22TiIkRSphUigLqSYgxpL7cI0LBEBRdC%2FS3E6vByWw%2BN2Y37g4Z4vZi2vp1%2BXO3b7DPWXCzBu%2Bvbuv7uO%2BPT%2BB86rNzALBAAA';
-
+  const parseQRUrl = (url: string) => {
     // Detect whether oauth redirect window or not
-    const hashIndex = qrUrl.indexOf('#');
-    const hashSlice = qrUrl.slice(hashIndex);
+    const hashIndex = url.indexOf('#');
+    const hashSlice = url.slice(hashIndex);
     const qMarkIndex = hashSlice.indexOf('?');
     const qMarkSlice = hashSlice.slice(qMarkIndex + 1);
     const params = new URLSearchParams(qMarkSlice);
@@ -232,31 +230,41 @@ function App() {
     return undefined;
   };
 
+  const verifyPCDFromQR = async (pcd: any) => {
+    const { phraseId: round, username } = pcd.claim;
+    setShowVerifyModal({
+      round,
+      username,
+      verifying: true,
+    });
+    try {
+      const { shouted } = await verify({
+        proof: pcd.proof,
+        round,
+        username,
+      });
+      setShowVerifyModal(
+        (prev) => ({ ...prev!, shouted, verified: true, verifying: false }!)
+      );
+    } catch (err) {
+      setShowVerifyModal(
+        (prev) => ({ ...prev!, verified: false, verifying: false }!)
+      );
+    }
+  };
+
   useEffect(() => {
     (async () => {
-      const pcd = getPCD();
-      if (pcd) {
-        const { phraseId: round, username } = pcd.claim;
-        setShowVerifyModal({
-          round,
-          username,
-          verifying: true,
-        });
-        try {
-          const { shouted } = await verify({
-            proof: pcd.proof,
-            round,
-            username,
-          });
-          setShowVerifyModal(
-            (prev) => ({ ...prev!, shouted, verified: true, verifying: false }!)
-          );
-        } catch (err) {}
-      } else if (window.opener) {
-        const params = new URLSearchParams(window.location.hash.slice(7));
-        const proof = params.get('proof');
-        window.opener.postMessage({ proof, zupass_redirect: true });
-        window.close();
+      if (window.opener) {
+        handlePopup();
+      } else if (
+        window.location.href.includes(`${window.location.origin}/#/`)
+      ) {
+        // TODO: Replace with redirect URL
+        const url =
+          'http://localhost:3004/#/verify-phrase?pcd=H4sIAAAAAAAAA2WTXU7bUBCF9%2BJnIs3%2FDwuo2jU0qDLGLahAogQqVYi991yHPlR9Sa49npnvnJn7Nr38Pq7T9XRel9P6sjven%2Bbzujsud9PVNH6vp7f99HC3n673E9t39lV9N9OaO1t42d3e1ryriuWO26xL99PVfloe54cnpCD1UvDLKCCIvJ7X0%2FP8tG71Ps0%2F18sDIheAz%2FP5foulOIVLsmSzlaaHsuBPpbmsRCUrspRMIkidhcIou9lJu7PKGEmtHPvpHQ2Op8Ph%2BwfUw7cZp69ogzAzZ4eVI6fCMqWou51LzdQ1qCM60ywriVvSmDxZs2ngZEkH3m0yAAwjEBKi0CyXVncCIKELIcO8clRP7mBrEyNTiw5PKypUluICBW0FUfbmakO%2BHchgFk%2BiVPUht4pxSljSzOUQAztKDMrFueFSwAV0AAUyuJgjCQWCivujhTObmUhADdxF87ZARoRAIeypajjURtDjwxUSaCZoEx%2BwpYEOCh2DFowsldGEAaGG4FACjirtkrEpmOUAp04MkkgIAqBAh7BgIosAB7toUWyQUIb6g3HAYyuEgQgzI1IwvG5jHV7DZqwASamYDfBGL9jAYHAQYlx%2FIbfC8ODmw%2BHlshTl0AlVipmwtxowcQwxwVguc098owmNcBUKnNo7h8qg8a6LMGlx2VoUFgpa8Y0Hkg2L3Uh3LCw22TiIkRSphUigLqSYgxpL7cI0LBEBRdC%2FS3E6vByWw%2BN2Y37g4Z4vZi2vp1%2BXO3b7DPWXCzBu%2Bvbuv7uO%2BPT%2BB86rNzALBAAA';
+        const pcd = parseQRUrl(url);
+        await verifyPCDFromQR(pcd);
       } else {
         const wordData = await getWords();
         const data = await checkForSession();

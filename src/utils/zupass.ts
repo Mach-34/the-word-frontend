@@ -1,7 +1,8 @@
 import { EmailPCDArgs, EmailPCDPackage } from '@pcd/email-pcd';
 import { ArgsOf, ArgumentTypeName, PCDPackage } from '@pcd/pcd-types';
 import { ActionPayload } from 'api';
-import { ZUPASS_URL } from 'utils/constants';
+
+const { REACT_APP_ZUPASS_URL: ZUPASS_URL } = process.env;
 
 enum PCDRequestType {
     Get = "Get",
@@ -48,7 +49,7 @@ interface PCDProveAndAddRequest<T extends PCDPackage = PCDPackage>
 export const addPCD = ({ round, secret, username }: ActionPayload) => {
     // TODO: Provide replace any
     const proofUrl = constructZupassPcdProveAndAddRequestUrl<any>(
-        ZUPASS_URL,
+        ZUPASS_URL!,
         window.location.origin + '#/popup',
         'secret-phrase-pcd',
         {
@@ -124,7 +125,7 @@ const constructZupassPcdProveAndAddRequestUrl = <
 }
 
 export const sendZupassRequest = (proofUrl: string) => {
-    const popupUrl = `http://localhost:3001/#/popup?proofUrl=${encodeURIComponent(proofUrl)}`;
+    const popupUrl = `#/popup?proofUrl=${encodeURIComponent(proofUrl)}`;
 
     window.open(popupUrl, "_blank", "width=450,height=600,top=100,popup");
 }
@@ -155,10 +156,10 @@ export function openEmailPCDPopup(
         },
     }
 
-    const popupUrl = `http://localhost:3001/#/${popupRoute}`
+    const popupUrl = `${window.location.origin}#/${popupRoute}`
 
     const proofUrl = constructZupassPcdGetRequestUrl<typeof EmailPCDPackage>(
-        ZUPASS_URL,
+        ZUPASS_URL!,
         popupUrl,
         EmailPCDPackage.name,
         args,
@@ -193,7 +194,7 @@ export function getWithoutProvingUrl(
 
 export const getProofWithoutProving = () => {
     const url = getWithoutProvingUrl(
-        ZUPASS_URL,
+        ZUPASS_URL!,
         `${window.location.origin}#/popup`,
         EmailPCDPackage.name
     );
@@ -251,4 +252,38 @@ export function usernameToBigint(username: string): bigint {
     // convert to bigint
     const hex = Buffer.from(encoded).toString('hex')
     return BigInt(`0x${hex}`) as bigint;
+}
+
+export const handlePopup = () => {
+    let params;
+    if (window.location.href.includes(window.location.origin + '/#/')) {
+        const url = new URL(window.location.href.replace('#', ''));
+
+        params = url.searchParams;
+    } else {
+        params = new URLSearchParams(window.location.search);
+    }
+
+    const paramsProofUrl = params.get('proofUrl');
+    const paramsProof = params.get('proof');
+    const paramsEncodingPendingPCD = params.get('encodedPendingPCD');
+    const finished = params.get('finished');
+
+    // First, this page is window.open()-ed. Redirect to Zupass.
+    if (paramsProofUrl != null) {
+        window.location.href = paramsProofUrl;
+    } else if (finished) {
+        // Later, Zupass redirects back with a result. Send it to our parent.
+        if (paramsProof != null) {
+            window.opener.postMessage({
+                proof: paramsProof,
+                zupass_redirect: true,
+            });
+        }
+        window.close();
+    } else if (paramsEncodingPendingPCD != null) {
+        // Later, Zupass redirects back with a encodedPendingPCD. Send it to our parent.
+        window.opener.postMessage({ proof: paramsProof, zupass_redirect: true });
+        window.close();
+    }
 }
