@@ -67,14 +67,7 @@ export default function ActionModal({
   }, [open]);
 
   return (
-    <Modal
-      onClose={onClose}
-      open={open}
-      style={{
-        backgroundColor: '#19473F',
-        border: '2px solid #CABF8D',
-      }}
-    >
+    <Modal onClose={onClose} open={open}>
       <X className={styles.exit} color='#FBD270' onClick={onClose} />
       <div className={styles.modalContent}>
         <input

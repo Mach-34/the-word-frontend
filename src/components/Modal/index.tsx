@@ -3,8 +3,8 @@ import ReactModal from 'react-modal';
 
 const customStyles = {
   content: {
-    background: 'white',
-    border: '1px solid black',
+    backgroundColor: '#19473F',
+    border: '2px solid #CABF8D',
     top: '50%',
     left: '50%',
     right: 'auto',

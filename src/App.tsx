@@ -10,15 +10,32 @@ import {
   logout,
   verify,
 } from './api';
-import { Action, SelectedWord, UserSession, Word } from './types';
+import {
+  Action,
+  SelectedWord,
+  UserSession,
+  VerifyModalPayload,
+  Word,
+} from './types';
 import { ArrowUpDown, Filter } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { shout, whisper } from './api';
 import WordCard from 'components/WordCard';
-import { addPCD, getProofWithoutProving } from 'utils/zupass';
+import {
+  addPCD,
+  getProofWithoutProving,
+  convertTitleToFelts,
+  usernameToBigint,
+} from 'utils/zupass';
 import Button from 'components/Button';
 import { MoonLoader } from 'react-spinners';
 import Flex from 'components/Flex';
+import VerifyModal from 'components/Modal/VerifyModal';
+import { ungzip } from 'pako';
+import { groth16 } from 'snarkjs';
+
+const wasmPath = 'the_word.wasm';
+const zkeyPath = 'the_word.zkey';
 
 const FILTER_OPTIONS = ['Secrets I know', `Secrets I don't know`];
 const SORT_OPTIONS = ['Secret ID', '# of whispers', 'Prize shouting'];
@@ -33,6 +50,8 @@ function App() {
   const [restoringSession, setRestoringSession] = useState(true);
   const [selectedWord, setSelectedWord] = useState<SelectedWord | null>(null);
   const [showDetails, setShowDetails] = useState(-1);
+  const [showVerifyModal, setShowVerifyModal] =
+    useState<VerifyModalPayload | null>(null);
   const [sort, setSort] = useState('');
   const [words, setWords] = useState<Array<Word>>([]);
 
@@ -120,8 +139,27 @@ function App() {
     const { errorText, successText } = actionText(selectedWord.action);
     try {
       if (selectedWord.action === Action.Shout) await shout(payload);
-      else if (selectedWord.action === Action.Whisper) await whisper(payload);
-      else await verify(payload);
+      else {
+        const usernameEncoded = `0x${BigInt(
+          usernameToBigint(payload.username)
+        ).toString(16)}`;
+        const { proof } = await groth16.fullProve(
+          {
+            phrase: convertTitleToFelts(payload.secret!),
+            username: usernameEncoded,
+          },
+          wasmPath,
+          zkeyPath
+        );
+        const proofPayload = {
+          proof,
+          round: payload.round,
+          username: payload.username,
+        };
+        selectedWord.action === Action.Whisper
+          ? await whisper(proofPayload)
+          : await verify(proofPayload);
+      }
       toast.success(successText);
       setSelectedWord(null);
       if (selectedWord.action !== Action.Reissue) {
@@ -131,6 +169,7 @@ function App() {
         addPCD(payload);
       }
     } catch (err) {
+      console.log('Err: ', err);
       toast.error(errorText);
     }
     setPerformingAction(false);
@@ -172,10 +211,48 @@ function App() {
     });
   };
 
+  const getPCD = () => {
+    const qrUrl =
+      'http://localhost:3004/#/verify-phrase?pcd=H4sIAAAAAAAAA2WTXU7bUBCF9%2BJnIs3%2FDwuo2jU0qDLGLahAogQqVYi991yHPlR9Sa49npnvnJn7Nr38Pq7T9XRel9P6sjven%2Bbzujsud9PVNH6vp7f99HC3n673E9t39lV9N9OaO1t42d3e1ryriuWO26xL99PVfloe54cnpCD1UvDLKCCIvJ7X0%2FP8tG71Ps0%2F18sDIheAz%2FP5foulOIVLsmSzlaaHsuBPpbmsRCUrspRMIkidhcIou9lJu7PKGEmtHPvpHQ2Op8Ph%2BwfUw7cZp69ogzAzZ4eVI6fCMqWou51LzdQ1qCM60ywriVvSmDxZs2ngZEkH3m0yAAwjEBKi0CyXVncCIKELIcO8clRP7mBrEyNTiw5PKypUluICBW0FUfbmakO%2BHchgFk%2BiVPUht4pxSljSzOUQAztKDMrFueFSwAV0AAUyuJgjCQWCivujhTObmUhADdxF87ZARoRAIeypajjURtDjwxUSaCZoEx%2BwpYEOCh2DFowsldGEAaGG4FACjirtkrEpmOUAp04MkkgIAqBAh7BgIosAB7toUWyQUIb6g3HAYyuEgQgzI1IwvG5jHV7DZqwASamYDfBGL9jAYHAQYlx%2FIbfC8ODmw%2BHlshTl0AlVipmwtxowcQwxwVguc098owmNcBUKnNo7h8qg8a6LMGlx2VoUFgpa8Y0Hkg2L3Uh3LCw22TiIkRSphUigLqSYgxpL7cI0LBEBRdC%2FS3E6vByWw%2BN2Y37g4Z4vZi2vp1%2BXO3b7DPWXCzBu%2Bvbuv7uO%2BPT%2BB86rNzALBAAA';
+
+    // Detect whether oauth redirect window or not
+    const hashIndex = qrUrl.indexOf('#');
+    const hashSlice = qrUrl.slice(hashIndex);
+    const qMarkIndex = hashSlice.indexOf('?');
+    const qMarkSlice = hashSlice.slice(qMarkIndex + 1);
+    const params = new URLSearchParams(qMarkSlice);
+    const pcdParam = params.get('pcd');
+    if (pcdParam) {
+      const buffer = Buffer.from(pcdParam, 'base64');
+      const unzippedBuffer = Buffer.from(ungzip(buffer));
+      const decodedBuffer = unzippedBuffer.toString('utf8');
+      const { pcd } = JSON.parse(decodedBuffer);
+      return JSON.parse(pcd);
+    }
+    return undefined;
+  };
+
   useEffect(() => {
     (async () => {
-      // Detect whether oauth redirect window or not
-      if (window.opener) {
+      const pcd = getPCD();
+      if (pcd) {
+        const { phraseId: round, username } = pcd.claim;
+        setShowVerifyModal({
+          round,
+          username,
+          verifying: true,
+        });
+        try {
+          const { shouted } = await verify({
+            proof: pcd.proof,
+            round,
+            username,
+          });
+          setShowVerifyModal(
+            (prev) => ({ ...prev!, shouted, verified: true, verifying: false }!)
+          );
+        } catch (err) {}
+      } else if (window.opener) {
         const params = new URLSearchParams(window.location.hash.slice(7));
         const proof = params.get('proof');
         window.opener.postMessage({ proof, zupass_redirect: true });
@@ -192,8 +269,6 @@ function App() {
       }
     })();
   }, []);
-
-  console.log('Logged in user: ', loggedInUser);
 
   return (
     <div>
@@ -269,7 +344,7 @@ function App() {
               <MoonLoader color='#FBD270' size={40} />
               <div className={styles.loadingText}>Fetching words</div>
             </div>
-          ) : (
+          ) : !!preparedWords.length ? (
             <Flex
               childFlex='1 0 calc(33.3% - 8px)'
               gap='8px'
@@ -278,20 +353,20 @@ function App() {
               paddingItemsStyle={{ minWidth: '250px' }}
               wrap='wrap'
             >
-              {!!preparedWords.length ? (
-                preparedWords.map((word: Word) => (
-                  <WordCard
-                    key={word.round}
-                    isLoggedIn={!!loggedInUser}
-                    setSelectedWord={setSelectedWord}
-                    setShowDetails={setShowDetails}
-                    showDetails={showDetails}
-                    word={word}
-                  />
-                ))
-              ) : (
-                <div className={styles.noWords}>No words</div>
-              )}
+              {preparedWords.map((word: Word) => (
+                <WordCard
+                  key={word.round}
+                  isLoggedIn={!!loggedInUser}
+                  setSelectedWord={setSelectedWord}
+                  setShowDetails={setShowDetails}
+                  showDetails={showDetails}
+                  word={word}
+                />
+              ))}
+            </Flex>
+          ) : (
+            <Flex alignItems='center' justifyContent='center'>
+              <div className={styles.noWords}>No words</div>
             </Flex>
           )}
         </div>
@@ -303,6 +378,11 @@ function App() {
           performingAction={performingAction}
           round={selectedWord?.round ?? -1}
           savedUsername={loggedInUser?.username}
+        />
+        <VerifyModal
+          data={showVerifyModal}
+          onClose={() => setShowVerifyModal(null)}
+          open={!!showVerifyModal}
         />
       </div>
     </div>

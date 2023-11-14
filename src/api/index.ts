@@ -1,9 +1,11 @@
+import { Groth16Proof } from "snarkjs";
 
 const { REACT_APP_API_URL } = process.env;
 
 export type ActionPayload = {
+    proof?: Groth16Proof,
     round: number;
-    secret: string;
+    secret?: string;
     username: string;
 }
 
@@ -13,7 +15,7 @@ export const checkForSession = async () => {
 }
 
 export const getWords = async () => {
-    const res = await fetch(`${REACT_APP_API_URL}/rounds`);
+    const res = await fetch(`${REACT_APP_API_URL}/rounds`, { credentials: 'include' });
     if (res.ok) {
         return await res.json();
     } else {
@@ -78,6 +80,7 @@ export const verify = async (payload: ActionPayload) => {
         credentials: 'include'
     });
     if (!res.ok) {
-        throw Error("Shout failed")
+        throw Error("Verification failed")
     }
+    return await res.json()
 }

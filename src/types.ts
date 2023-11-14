@@ -9,6 +9,14 @@ export type SelectedWord = {
     round: number;
 };
 
+export type VerifyModalPayload = {
+    round: number;
+    shouted?: boolean;
+    username: string;
+    verified?: boolean;
+    verifying: boolean;
+}
+
 export type UserSession = {
     email: string;
     semaphoreId: string;

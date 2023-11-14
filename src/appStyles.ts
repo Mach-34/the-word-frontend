@@ -50,13 +50,9 @@ export const useStyles = createUseStyles({
     }
   },
   noWords: {
-    alignItems: 'center',
     color: '#FBD270',
-    display: 'flex',
     fontSize: '28px',
-    justifyContent: 'center',
     marginTop: '150px',
-    width: '100%'
   },
   selectContainer: {
     display: 'flex',
